@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-
 import 'widgets/splash_background.dart';
 import 'widgets/splash_center.dart';
+import '../home/home_page.dart';
 
 class SplashTopText extends StatelessWidget {
   const SplashTopText({super.key});
-
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -40,14 +38,12 @@ class SplashTopText extends StatelessWidget {
 
 class SplashBottomText extends StatefulWidget {
   const SplashBottomText({super.key});
-
   @override
   State<SplashBottomText> createState() => _SplashBottomTextState();
 }
 
 class _SplashBottomTextState extends State<SplashBottomText> {
   String version = "";
-
   @override
   void initState() {
     super.initState();
@@ -64,7 +60,6 @@ class _SplashBottomTextState extends State<SplashBottomText> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -91,31 +86,107 @@ class _SplashBottomTextState extends State<SplashBottomText> {
   }
 }
 
-class SplashPage extends StatelessWidget {
+class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          const SplashBackground(),
+  State<SplashPage> createState() => _SplashPageState();
+}
 
-          Positioned.fill(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: const [
-                Spacer(flex: 2),
-                SplashTopText(),
-                Spacer(flex: 3),
-                SplashCenter(),
-                Spacer(flex: 4),
-                SplashBottomText(),
-                SizedBox(height: 56),
-              ],
-            ),
+class _SplashPageState extends State<SplashPage>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _progressAnimation;
+  bool _isLoading = false;
+  static const double _initialProgress = 0.25; // Starting progress
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200), // Duration for 75% -> 100%
+    );
+
+    // Create a Tween that goes from 0.75 to 0.95
+    _progressAnimation = Tween<double>(begin: _initialProgress, end: 0.90)
+        .animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeInOut,
           ),
-        ],
+        );
+
+    _animationController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        // Animation completed, navigate to main page
+        _navigateToMainPage();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _handleTap() {
+    if (!_isLoading) {
+      setState(() {
+        _isLoading = true;
+      });
+      _animationController.forward();
+    }
+  }
+
+  void _navigateToMainPage() {
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const HomePage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          // Fade transition
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 500),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _handleTap,
+      child: Scaffold(
+        body: Stack(
+          children: [
+            const SplashBackground(),
+            Positioned.fill(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Spacer(flex: 2),
+                  const SplashTopText(),
+                  const Spacer(flex: 3),
+                  AnimatedBuilder(
+                    animation: _progressAnimation,
+                    builder: (context, child) {
+                      return SplashCenter(
+                        progress: _isLoading
+                            ? _progressAnimation.value
+                            : _initialProgress,
+                      );
+                    },
+                  ),
+                  const Spacer(flex: 4),
+                  const SplashBottomText(),
+                  const SizedBox(height: 56),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
